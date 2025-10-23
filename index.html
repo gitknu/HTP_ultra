@@ -140,6 +140,8 @@
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 
 <body>
@@ -163,6 +165,8 @@
         <span id="slide-indicator"></span>
         <button id="next-slide">Next</button>
         <button id="download-png">Download as PNG</button>
+        <button id="download-zip">Download All (ZIP)</button>
+        <button id="download-pdf">Download All (PDF)</button>
     </div>
     
     <!-- Hidden container for measuring content height without affecting the display -->
@@ -341,15 +345,86 @@
 
         document.getElementById('download-png').addEventListener('click', () => {
             const slideContainer = document.getElementById('slide-container');
-            html2canvas(slideContainer, {
-                scale: 2
-            }).then(canvas => {
+            html2canvas(slideContainer, { scale: 2 }).then(canvas => {
                 const link = document.createElement('a');
                 link.download = `slide_${currentSlideIndex + 1}.png`;
                 link.href = canvas.toDataURL('image/png');
                 link.click();
             });
         });
+
+        async function downloadAllSlidesAsZip() {
+            const zipButton = document.getElementById('download-zip');
+            const renderTarget = document.getElementById('measuring-container');
+            const zip = new JSZip();
+
+            zipButton.disabled = true;
+            zipButton.textContent = 'Generating...';
+
+            try {
+                for (let i = 0; i < slidesData.length; i++) {
+                    renderTarget.innerHTML = slidesData[i];
+                    const canvas = await html2canvas(renderTarget, { scale: 2 });
+                    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+                    zip.file(`slide_${i + 1}.png`, blob);
+                }
+
+                const zipContent = await zip.generateAsync({ type: "blob" });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(zipContent);
+                link.download = 'slides.zip';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(link.href);
+
+            } catch (error) {
+                console.error("Failed to generate zip file:", error);
+                alert("An error occurred while generating the ZIP file.");
+            } finally {
+                zipButton.disabled = false;
+                zipButton.textContent = 'Download All (ZIP)';
+                renderTarget.innerHTML = '';
+            }
+        }
+
+        async function downloadAllSlidesAsPdf() {
+            const pdfButton = document.getElementById('download-pdf');
+            const renderTarget = document.getElementById('measuring-container');
+            // Use window.jspdf.jsPDF to access the library
+            const { jsPDF } = window.jspdf;
+            // Create PDF with exact 16:9 dimensions in 'pt' (points) which html2canvas uses
+            const pdf = new jsPDF({ orientation: 'landscape', unit: 'pt', format: [1280, 720] });
+
+            pdfButton.disabled = true;
+            pdfButton.textContent = 'Generating PDF...';
+
+            try {
+                for (let i = 0; i < slidesData.length; i++) {
+                    renderTarget.innerHTML = slidesData[i];
+                    const canvas = await html2canvas(renderTarget, { scale: 2 });
+                    const imgData = canvas.toDataURL('image/png');
+
+                    if (i > 0) {
+                        pdf.addPage([1280, 720], 'landscape');
+                    }
+                    pdf.addImage(imgData, 'PNG', 0, 0, 1280, 720);
+                }
+                pdf.save('slides.pdf');
+
+            } catch (error) {
+                console.error("Failed to generate PDF file:", error);
+                alert("An error occurred while generating the PDF file.");
+            } finally {
+                pdfButton.disabled = false;
+                pdfButton.textContent = 'Download All (PDF)';
+                renderTarget.innerHTML = '';
+            }
+        }
+
+        document.getElementById('download-zip').addEventListener('click', downloadAllSlidesAsZip);
+        document.getElementById('download-pdf').addEventListener('click', downloadAllSlidesAsPdf);
+
     </script>
 
 </body>
