@@ -20,7 +20,7 @@
             color: #333; /* A softer black for the main title */
         }
 
-        .instruction-container, .uploader-container {
+        .instruction-container {
             background-color: white; /* White background for containers */
             padding: 20px;
             border-radius: 8px;
@@ -30,33 +30,42 @@
             max-width: 800px; /* Limit width for better readability */
         }
         
+        /* MODIFICATION START: Styles for the new drag-and-drop uploader */
         .uploader-container {
+            background-color: white;
+            border: 2px dashed #ccc;
+            border-radius: 8px;
+            padding: 40px 20px;
+            margin-bottom: 20px;
             text-align: center;
+            max-width: 800px;
+            width: 100%;
+            box-sizing: border-box;
+            cursor: pointer;
+            transition: background-color 0.3s, border-color 0.3s;
+        }
+
+        .uploader-container.dragover {
+            background-color: #e9f5ff;
+            border-color: #0b5394;
         }
 
         #csvFileInput {
             display: none;
         }
 
-        .custom-file-upload {
-            display: inline-block;
-            padding: 6px 12px;
-            cursor: pointer;
-            background-color: #0b5394; /* Primary Blue */
-            color: white; /* White text */
-            border-radius: 4px;
-            border: none;
-        }
-
-        .custom-file-upload:hover {
-            background-color: #084175; /* A slightly darker blue for hover */
+        .uploader-text {
+            color: #555;
+            font-size: 18px;
         }
 
         #fileName {
-            margin-left: 10px;
+            margin-top: 10px;
             font-style: italic;
-            color: #555;
+            color: #333;
+            font-weight: bold;
         }
+        /* MODIFICATION END */
 
         .slide-container {
             width: 1280px;
@@ -159,7 +168,7 @@
             <li>Відкрийте потрібний Вам файл у Google Таблицях</li>
             <li>Натисніть зліва згори Файл > Завантажити</li>
             <li>Оберіть формат CSV (розділені комами) та збережіть</li>
-            <li>Завантажте цей файл сюди з допомого головної кнопки</li>
+            <li><b>Перетягніть файл у поле нижче</b> або натисніть на нього, щоб обрати файл</li>
             <li>Готово! Збережіть PDF (але можна зберігати окремі слайди)</li>
         </ol>
         <p><b>Звертаю Вашу увагу на те що:</b></p>
@@ -169,13 +178,14 @@
         </ul>
     </div>
 
-    <div class="uploader-container">
-        <label for="csvFileInput" class="custom-file-upload">
-            Обрати CSV файл
-        </label>
-        <input type="file" id="csvFileInput" accept=".csv">
-        <span id="fileName">Файл не обрано</span>
-    </div>
+    <!-- MODIFICATION START: Updated HTML for the uploader -->
+    <label for="csvFileInput" id="uploader-container" class="uploader-container">
+        <div class="uploader-text">Натисніть або перетягніть сюди CSV файл</div>
+        <div id="fileName">Файл не обрано</div>
+    </label>
+    <input type="file" id="csvFileInput" accept=".csv">
+    <!-- MODIFICATION END -->
+
 
     <div id="slide-container" class="slide-container" style="display:none;">
         <!-- Slides will be generated here -->
@@ -190,70 +200,137 @@
         <button id="download-pdf">Завантажити всі (PDF)</button>
     </div>
     
-    <!-- Hidden container for measuring content height without affecting the display -->
     <div id="measuring-container" class="slide-container" style="position: absolute; left: -9999px; top: -9999px; z-index: -1;"></div>
 
 
     <script>
-        document.getElementById('csvFileInput').addEventListener('change', handleFileSelect);
+        // **MODIFICATION START: Drag and drop and validation logic**
+        const uploaderContainer = document.getElementById('uploader-container');
+        const fileInput = document.getElementById('csvFileInput');
+        const fileNameDisplay = document.getElementById('fileName');
 
         let slidesData = [];
         let currentSlideIndex = 0;
 
-        function handleFileSelect(event) {
-            const file = event.target.files[0];
-            if (file) {
-                document.getElementById('fileName').textContent = file.name;
-                Papa.parse(file, {
-                    header: true,
-                    skipEmptyLines: true,
-                    complete: function(results) {
-                        let lastDepartment = "";
-                        const filledData = results.data.map(row => {
-                            const department = row['Структурний підрозділ'];
-                            if (department && department.trim() !== '') {
-                                lastDepartment = department.trim();
-                            } else {
-                                row['Структурний підрозділ'] = lastDepartment;
-                            }
-                            return row;
-                        });
+        // --- Drag and Drop Event Listeners ---
+        uploaderContainer.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            uploaderContainer.classList.add('dragover');
+        });
 
-                        const processedData = processData(filledData);
-                        slidesData = generateSlides(processedData);
-                        if (slidesData.length > 0) {
-                            currentSlideIndex = 0;
-                            renderSlide(currentSlideIndex);
-                            document.getElementById('slide-container').style.display = 'block';
-                            document.getElementById('controls').style.display = 'flex';
-                        }
-                    }
-                });
+        uploaderContainer.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            uploaderContainer.classList.remove('dragover');
+        });
+
+        uploaderContainer.addEventListener('drop', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            uploaderContainer.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length) {
+                processFile(files[0]);
             }
-        }
+        });
 
-        // **MODIFICATION START: Underline scientist's name and bold the work name**
+        // --- Click Event Listener ---
+        fileInput.addEventListener('change', (e) => {
+            const files = e.target.files;
+            if (files.length) {
+                processFile(files[0]);
+            }
+        });
+        
+        // --- Central File Processing Function ---
+        function processFile(file) {
+            // 1. Validate file type
+            if (!file.name.toLowerCase().endsWith('.csv')) {
+                alert("Помилка: будь ласка, завантажте файл у форматі .csv");
+                resetUI();
+                return;
+            }
+
+            fileNameDisplay.textContent = file.name;
+
+            Papa.parse(file, {
+                header: true,
+                skipEmptyLines: true,
+                complete: function(results) {
+                    // 2. Validate CSV headers
+                    const requiredColumns = [
+                        'Назва тематичного напряму відповідно наказу МОН України',
+                        'ПІБ наукового керівника, науковий ступінь, вчене звання, назва роботи, категорія та тип роботи',
+                        'Структурний підрозділ',
+                        'Термін виконання та орієнтований обсяг фінансування',
+                        'Бали експертів, середній бал',
+                        'Дата та № витягу засідання експертної комісії (голова комісії), щодо проходження І етапу Конкурсу'
+                    ];
+                    const actualColumns = results.meta.fields;
+                    
+                    const missingColumns = requiredColumns.filter(col => !actualColumns.includes(col));
+                    
+                    if (missingColumns.length > 0) {
+                        alert(`Помилка: файл CSV не має необхідних стовпців.\n\nВідсутні стовпці:\n- ${missingColumns.join('\n- ')}\n\nБудь ласка, виправте файл і спробуйте ще раз.`);
+                        resetUI();
+                        return;
+                    }
+
+                    // If validation passes, proceed
+                    let lastDepartment = "";
+                    const filledData = results.data.map(row => {
+                        const department = row['Структурний підрозділ'];
+                        if (department && department.trim() !== '') {
+                            lastDepartment = department.trim();
+                        } else {
+                            row['Структурний підрозділ'] = lastDepartment;
+                        }
+                        return row;
+                    });
+
+                    const processedData = processData(filledData);
+                    slidesData = generateSlides(processedData);
+                    if (slidesData.length > 0) {
+                        currentSlideIndex = 0;
+                        renderSlide(currentSlideIndex);
+                        document.getElementById('slide-container').style.display = 'block';
+                        document.getElementById('controls').style.display = 'flex';
+                    }
+                },
+                error: function(err) {
+                    alert("Помилка під час аналізу CSV файлу: " + err.message);
+                    resetUI();
+                }
+            });
+        }
+        
+        function resetUI() {
+            fileNameDisplay.textContent = 'Файл не обрано';
+            fileInput.value = ''; // Reset file input
+            slidesData = [];
+            document.getElementById('slide-container').style.display = 'none';
+            document.getElementById('controls').style.display = 'none';
+        }
+        // **MODIFICATION END**
+        
         function formatWorkName(text) {
             if (!text) return '';
 
-            // --- Step 1: Underline the first three words (the scientist's name) ---
             const words = text.split(' ');
-            let processedText = text; // Default to original text
+            let processedText = text; 
             if (words.length >= 3) {
                 const underlinedName = `<u>${words.slice(0, 3).join(' ')}</u>`;
                 const restOfString = words.slice(3).join(' ');
-                // Re-add space only if there's remaining text
                 processedText = restOfString ? `${underlinedName} ${restOfString}` : underlinedName;
             }
 
-            // --- Step 2: Bold the work name, using the text from Step 1 ---
             const startMarker = "назва роботи:";
             const endMarkers = ["категорія", "тип роботи"];
             
-            const lowerText = processedText.toLowerCase(); // Use the string that has the underlining
+            const lowerText = processedText.toLowerCase(); 
             const startIndexRaw = lowerText.indexOf(startMarker);
 
-            // If the start marker isn't found, return the text with the name underlined.
             if (startIndexRaw === -1) {
                 return processedText;
             }
@@ -281,10 +358,8 @@
                 return `${beforePart}${leadingSpace}<b>${trimmedWorkName}</b>${trailingSpace}${afterPart}`;
             }
 
-            // If something went wrong, return the text with the name already underlined.
             return processedText;
         }
-        // **MODIFICATION END**
 
         function processData(data) {
             const groupedData = [];
@@ -326,7 +401,7 @@
         function generateSlides(data) {
             const slides = [];
             const measuringContainer = document.getElementById('measuring-container');
-            const availableHeight = 720; // Total height of the slide container
+            const availableHeight = 720; 
 
             data.forEach(group => {
                 let partCounter = 0;
@@ -358,7 +433,6 @@
 
                         bodyRowsHTML += `
                             <tr>
-                                <!-- Use formatter function for the first cell -->
                                 <td>${formatWorkName(item.pib || '')}</td>
                                 ${departmentCellHTML}
                                 <td>${item.term || ''}</td>
@@ -421,7 +495,6 @@
             measuringContainer.innerHTML = '';
             return slides;
         }
-
 
         function renderSlide(index) {
             const container = document.getElementById('slide-container');
@@ -496,9 +569,7 @@
         async function downloadAllSlidesAsPdf() {
             const pdfButton = document.getElementById('download-pdf');
             const renderTarget = document.getElementById('measuring-container');
-            // Use window.jspdf.jsPDF to access the library
             const { jsPDF } = window.jspdf;
-            // Create PDF with exact 16:9 dimensions in 'pt' (points) which html2canvas uses
             const pdf = new jsPDF({ orientation: 'landscape', unit: 'pt', format: [1280, 720] });
 
             pdfButton.disabled = true;
