@@ -30,7 +30,6 @@
             max-width: 800px; /* Limit width for better readability */
         }
         
-        /* MODIFICATION START: Styles for the new drag-and-drop uploader */
         .uploader-container {
             background-color: white;
             border: 2px dashed #ccc;
@@ -65,7 +64,6 @@
             color: #333;
             font-weight: bold;
         }
-        /* MODIFICATION END */
 
         .slide-container {
             width: 1280px;
@@ -178,14 +176,11 @@
         </ul>
     </div>
 
-    <!-- MODIFICATION START: Updated HTML for the uploader -->
     <label for="csvFileInput" id="uploader-container" class="uploader-container">
         <div class="uploader-text">Натисніть або перетягніть сюди CSV файл</div>
         <div id="fileName">Файл не обрано</div>
     </label>
     <input type="file" id="csvFileInput" accept=".csv">
-    <!-- MODIFICATION END -->
-
 
     <div id="slide-container" class="slide-container" style="display:none;">
         <!-- Slides will be generated here -->
@@ -202,9 +197,7 @@
     
     <div id="measuring-container" class="slide-container" style="position: absolute; left: -9999px; top: -9999px; z-index: -1;"></div>
 
-
     <script>
-        // **MODIFICATION START: Drag and drop and validation logic**
         const uploaderContainer = document.getElementById('uploader-container');
         const fileInput = document.getElementById('csvFileInput');
         const fileNameDisplay = document.getElementById('fileName');
@@ -212,7 +205,6 @@
         let slidesData = [];
         let currentSlideIndex = 0;
 
-        // --- Drag and Drop Event Listeners ---
         uploaderContainer.addEventListener('dragover', (e) => {
             e.preventDefault();
             e.stopPropagation();
@@ -235,7 +227,6 @@
             }
         });
 
-        // --- Click Event Listener ---
         fileInput.addEventListener('change', (e) => {
             const files = e.target.files;
             if (files.length) {
@@ -243,9 +234,7 @@
             }
         });
         
-        // --- Central File Processing Function ---
         function processFile(file) {
-            // 1. Validate file type
             if (!file.name.toLowerCase().endsWith('.csv')) {
                 alert("Помилка: будь ласка, завантажте файл у форматі .csv");
                 resetUI();
@@ -258,7 +247,6 @@
                 header: true,
                 skipEmptyLines: true,
                 complete: function(results) {
-                    // 2. Validate CSV headers
                     const requiredColumns = [
                         'Назва тематичного напряму відповідно наказу МОН України',
                         'ПІБ наукового керівника, науковий ступінь, вчене звання, назва роботи, категорія та тип роботи',
@@ -277,7 +265,6 @@
                         return;
                     }
 
-                    // If validation passes, proceed
                     let lastDepartment = "";
                     const filledData = results.data.map(row => {
                         const department = row['Структурний підрозділ'];
@@ -307,12 +294,11 @@
         
         function resetUI() {
             fileNameDisplay.textContent = 'Файл не обрано';
-            fileInput.value = ''; // Reset file input
+            fileInput.value = '';
             slidesData = [];
             document.getElementById('slide-container').style.display = 'none';
             document.getElementById('controls').style.display = 'none';
         }
-        // **MODIFICATION END**
         
         function formatWorkName(text) {
             if (!text) return '';
@@ -360,6 +346,31 @@
 
             return processedText;
         }
+
+        // **MODIFICATION START: New helper function to format the finance column**
+        function formatTermAndFinance(text) {
+            if (!text) return '';
+            const marker = 'місяців';
+            const index = text.indexOf(marker);
+
+            // If marker isn't found or there's nothing after it, return original text.
+            if (index === -1 || index + marker.length >= text.length) {
+                return text;
+            }
+
+            // Split the string into the part with "місяців" and the finance part.
+            const termPart = text.substring(0, index + marker.length);
+            const financePart = text.substring(index + marker.length).trim();
+
+            // If the finance part exists, format it on a new line.
+            if (financePart) {
+                return `${termPart}<br>${financePart} тис. грн.`;
+            }
+
+            // Otherwise, return the original text.
+            return text;
+        }
+        // **MODIFICATION END**
 
         function processData(data) {
             const groupedData = [];
@@ -435,7 +446,8 @@
                             <tr>
                                 <td>${formatWorkName(item.pib || '')}</td>
                                 ${departmentCellHTML}
-                                <td>${item.term || ''}</td>
+                                <!-- MODIFICATION: Use the new formatter for the term/finance cell -->
+                                <td>${formatTermAndFinance(item.term || '')}</td>
                                 <td>${item.score || ''}</td>
                                 <td>${item.commission || ''}</td>
                             </tr>
