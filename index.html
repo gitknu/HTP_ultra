@@ -232,26 +232,35 @@
             }
         }
 
-        // **MODIFICATION START: Corrected helper function to format the work name**
+        // **MODIFICATION START: Underline scientist's name and bold the work name**
         function formatWorkName(text) {
             if (!text) return '';
 
+            // --- Step 1: Underline the first three words (the scientist's name) ---
+            const words = text.split(' ');
+            let processedText = text; // Default to original text
+            if (words.length >= 3) {
+                const underlinedName = `<u>${words.slice(0, 3).join(' ')}</u>`;
+                const restOfString = words.slice(3).join(' ');
+                // Re-add space only if there's remaining text
+                processedText = restOfString ? `${underlinedName} ${restOfString}` : underlinedName;
+            }
+
+            // --- Step 2: Bold the work name, using the text from Step 1 ---
             const startMarker = "назва роботи:";
             const endMarkers = ["категорія", "тип роботи"];
             
-            const lowerText = text.toLowerCase();
+            const lowerText = processedText.toLowerCase(); // Use the string that has the underlining
             const startIndexRaw = lowerText.indexOf(startMarker);
 
-            // If the start marker isn't found, return original text.
+            // If the start marker isn't found, return the text with the name underlined.
             if (startIndexRaw === -1) {
-                return text;
+                return processedText;
             }
 
-            // The actual start of the work name is after the marker.
             const workNameStartIndex = startIndexRaw + startMarker.length;
             
-            // Find the earliest occurrence of any end marker *after* the work name starts.
-            let workNameEndIndex = text.length; // Default to the end of the string.
+            let workNameEndIndex = processedText.length;
             for (const marker of endMarkers) {
                 const potentialEndIndex = lowerText.indexOf(marker, workNameStartIndex);
                 if (potentialEndIndex !== -1 && potentialEndIndex < workNameEndIndex) {
@@ -259,14 +268,12 @@
                 }
             }
             
-            // Extract the three parts of the string.
-            const beforePart = text.substring(0, workNameStartIndex);
-            const workNamePart = text.substring(workNameStartIndex, workNameEndIndex);
-            const afterPart = text.substring(workNameEndIndex);
+            const beforePart = processedText.substring(0, workNameStartIndex);
+            const workNamePart = processedText.substring(workNameStartIndex, workNameEndIndex);
+            const afterPart = processedText.substring(workNameEndIndex);
             
             const trimmedWorkName = workNamePart.trim();
             
-            // Preserve spacing around the work name.
             const leadingSpace = workNamePart.match(/^\s*/)[0] || '';
             const trailingSpace = workNamePart.match(/\s*$/)[0] || '';
 
@@ -274,8 +281,8 @@
                 return `${beforePart}${leadingSpace}<b>${trimmedWorkName}</b>${trailingSpace}${afterPart}`;
             }
 
-            // If something went wrong, return the original text.
-            return text;
+            // If something went wrong, return the text with the name already underlined.
+            return processedText;
         }
         // **MODIFICATION END**
 
