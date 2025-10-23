@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="uk">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CSV to PNG Slide Generator</title>
+    <title>Генератор PNG слайдів з CSV</title>
     <style>
         body {
             font-family: Verdana, sans-serif;
@@ -20,12 +20,17 @@
             color: #333; /* A softer black for the main title */
         }
 
-        .uploader-container {
+        .instruction-container, .uploader-container {
             background-color: white; /* White background for containers */
             padding: 20px;
             border-radius: 8px;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
             margin-bottom: 20px;
+            text-align: left;
+            max-width: 800px; /* Limit width for better readability */
+        }
+        
+        .uploader-container {
             text-align: center;
         }
 
@@ -146,14 +151,30 @@
 
 <body>
 
-    <h1>CSV to 16:9 PNG Slide Generator</h1>
+    <h1>Генератор 16:9 PNG слайдів з CSV</h1>
+    
+    <div class="instruction-container">
+        <p><b>Інструкція з використання:</b></p>
+        <ol>
+            <li>Відкрийте потрібний Вам файл у Google Таблицях</li>
+            <li>Натисніть зліва згори Файл > Завантажити</li>
+            <li>Оберіть формат CSV (розділені комами) та збережіть</li>
+            <li>Завантажте цей файл сюди з допомого головної кнопки</li>
+            <li>Готово! Збережіть PDF (але можна зберігати окремі слайди)</li>
+        </ol>
+        <p><b>Звертаю Вашу увагу на те що:</b></p>
+        <ul>
+            <li>треба ретельно перевірити все на помилки<br>(і виправити таблицю та скачати CSV ще раз)</li>
+            <li>вся генерація відбувається локально (у Вас!)<br>(тобто ці дані в Інтернет нікуди не йдуть)</li>
+        </ul>
+    </div>
 
     <div class="uploader-container">
         <label for="csvFileInput" class="custom-file-upload">
-            Choose CSV File
+            Обрати CSV файл
         </label>
         <input type="file" id="csvFileInput" accept=".csv">
-        <span id="fileName">No file chosen</span>
+        <span id="fileName">Файл не обрано</span>
     </div>
 
     <div id="slide-container" class="slide-container" style="display:none;">
@@ -161,12 +182,12 @@
     </div>
 
     <div id="controls" class="controls" style="display:none;">
-        <button id="prev-slide">Previous</button>
+        <button id="prev-slide">Попередній</button>
         <span id="slide-indicator"></span>
-        <button id="next-slide">Next</button>
-        <button id="download-png">Download as PNG</button>
-        <button id="download-zip">Download All (ZIP)</button>
-        <button id="download-pdf">Download All (PDF)</button>
+        <button id="next-slide">Наступний</button>
+        <button id="download-png">Завантажити як PNG</button>
+        <button id="download-zip">Завантажити всі (ZIP)</button>
+        <button id="download-pdf">Завантажити всі (PDF)</button>
     </div>
     
     <!-- Hidden container for measuring content height without affecting the display -->
@@ -326,7 +347,7 @@
         }
 
         function updateControls() {
-            document.getElementById('slide-indicator').textContent = `Slide ${currentSlideIndex + 1} of ${slidesData.length}`;
+            document.getElementById('slide-indicator').textContent = `Слайд ${currentSlideIndex + 1} з ${slidesData.length}`;
             document.getElementById('prev-slide').disabled = currentSlideIndex === 0;
             document.getElementById('next-slide').disabled = currentSlideIndex === slidesData.length - 1;
         }
@@ -359,7 +380,7 @@
             const zip = new JSZip();
 
             zipButton.disabled = true;
-            zipButton.textContent = 'Generating...';
+            zipButton.textContent = 'Генерація...';
 
             try {
                 for (let i = 0; i < slidesData.length; i++) {
@@ -380,10 +401,10 @@
 
             } catch (error) {
                 console.error("Failed to generate zip file:", error);
-                alert("An error occurred while generating the ZIP file.");
+                alert("Виникла помилка під час генерації ZIP-файлу.");
             } finally {
                 zipButton.disabled = false;
-                zipButton.textContent = 'Download All (ZIP)';
+                zipButton.textContent = 'Завантажити всі (ZIP)';
                 renderTarget.innerHTML = '';
             }
         }
@@ -397,7 +418,7 @@
             const pdf = new jsPDF({ orientation: 'landscape', unit: 'pt', format: [1280, 720] });
 
             pdfButton.disabled = true;
-            pdfButton.textContent = 'Generating PDF...';
+            pdfButton.textContent = 'Генерація PDF...';
 
             try {
                 for (let i = 0; i < slidesData.length; i++) {
@@ -414,10 +435,10 @@
 
             } catch (error) {
                 console.error("Failed to generate PDF file:", error);
-                alert("An error occurred while generating the PDF file.");
+                alert("Виникла помилка під час генерації PDF-файлу.");
             } finally {
                 pdfButton.disabled = false;
-                pdfButton.textContent = 'Download All (PDF)';
+                pdfButton.textContent = 'Завантажити всі (PDF)';
                 renderTarget.innerHTML = '';
             }
         }
