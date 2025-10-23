@@ -208,7 +208,6 @@
                     header: true,
                     skipEmptyLines: true,
                     complete: function(results) {
-                        // **MODIFICATION START: Fill empty department cells before processing**
                         let lastDepartment = "";
                         const filledData = results.data.map(row => {
                             const department = row['Структурний підрозділ'];
@@ -219,9 +218,8 @@
                             }
                             return row;
                         });
-                        // **MODIFICATION END**
 
-                        const processedData = processData(filledData); // Use the modified data
+                        const processedData = processData(filledData);
                         slidesData = generateSlides(processedData);
                         if (slidesData.length > 0) {
                             currentSlideIndex = 0;
@@ -233,6 +231,53 @@
                 });
             }
         }
+
+        // **MODIFICATION START: Corrected helper function to format the work name**
+        function formatWorkName(text) {
+            if (!text) return '';
+
+            const startMarker = "назва роботи:";
+            const endMarkers = ["категорія", "тип роботи"];
+            
+            const lowerText = text.toLowerCase();
+            const startIndexRaw = lowerText.indexOf(startMarker);
+
+            // If the start marker isn't found, return original text.
+            if (startIndexRaw === -1) {
+                return text;
+            }
+
+            // The actual start of the work name is after the marker.
+            const workNameStartIndex = startIndexRaw + startMarker.length;
+            
+            // Find the earliest occurrence of any end marker *after* the work name starts.
+            let workNameEndIndex = text.length; // Default to the end of the string.
+            for (const marker of endMarkers) {
+                const potentialEndIndex = lowerText.indexOf(marker, workNameStartIndex);
+                if (potentialEndIndex !== -1 && potentialEndIndex < workNameEndIndex) {
+                    workNameEndIndex = potentialEndIndex;
+                }
+            }
+            
+            // Extract the three parts of the string.
+            const beforePart = text.substring(0, workNameStartIndex);
+            const workNamePart = text.substring(workNameStartIndex, workNameEndIndex);
+            const afterPart = text.substring(workNameEndIndex);
+            
+            const trimmedWorkName = workNamePart.trim();
+            
+            // Preserve spacing around the work name.
+            const leadingSpace = workNamePart.match(/^\s*/)[0] || '';
+            const trailingSpace = workNamePart.match(/\s*$/)[0] || '';
+
+            if (trimmedWorkName) {
+                return `${beforePart}${leadingSpace}<b>${trimmedWorkName}</b>${trailingSpace}${afterPart}`;
+            }
+
+            // If something went wrong, return the original text.
+            return text;
+        }
+        // **MODIFICATION END**
 
         function processData(data) {
             const groupedData = [];
@@ -287,16 +332,13 @@
                         slideHeaderText += ` (Частина ${currentPart + 1}/${numParts})`;
                     }
 
-                    // **MODIFICATION START: Logic for rowspan and cell merging**
                     let bodyRowsHTML = '';
                     for (let i = 0; i < items.length; i++) {
                         const item = items[i];
                         let departmentCellHTML = '';
 
-                        // Check if this row is the start of a new department group
                         if (i === 0 || items[i].department !== items[i - 1].department) {
                             let rowspan = 1;
-                            // Look ahead to count how many consecutive rows have the same department
                             for (let j = i + 1; j < items.length; j++) {
                                 if (items[j].department === item.department) {
                                     rowspan++;
@@ -306,11 +348,11 @@
                             }
                             departmentCellHTML = `<td rowspan="${rowspan}" style="vertical-align: middle; text-align: center;">${item.department || ''}</td>`;
                         }
-                        // If it's not the start of a new group, departmentCellHTML remains empty, so no <td> is rendered.
 
                         bodyRowsHTML += `
                             <tr>
-                                <td>${item.pib || ''}</td>
+                                <!-- Use formatter function for the first cell -->
+                                <td>${formatWorkName(item.pib || '')}</td>
                                 ${departmentCellHTML}
                                 <td>${item.term || ''}</td>
                                 <td>${item.score || ''}</td>
@@ -318,7 +360,6 @@
                             </tr>
                         `;
                     }
-                    // **MODIFICATION END**
 
                     return `
                         <div class="slide-content">
