@@ -346,28 +346,49 @@
 
             return processedText;
         }
-
-        // **MODIFICATION START: New helper function to format the finance column**
+        
         function formatTermAndFinance(text) {
             if (!text) return '';
             const marker = 'місяців';
             const index = text.indexOf(marker);
 
-            // If marker isn't found or there's nothing after it, return original text.
             if (index === -1 || index + marker.length >= text.length) {
                 return text;
             }
 
-            // Split the string into the part with "місяців" and the finance part.
             const termPart = text.substring(0, index + marker.length);
             const financePart = text.substring(index + marker.length).trim();
 
-            // If the finance part exists, format it on a new line.
             if (financePart) {
                 return `${termPart}<br>${financePart} тис. грн.`;
             }
 
-            // Otherwise, return the original text.
+            return text;
+        }
+
+        // **MODIFICATION START: Corrected logic for the scores column**
+        function formatScores(text) {
+            if (!text) return '';
+            
+            // First, create a cleaned version of the string by removing list enumerators (e.g., "1. ", "2. ").
+            // This prevents them from being parsed as scores. The \b ensures we match whole words.
+            const cleanedText = text.replace(/\b\d\.\s*/g, '');
+
+            // Now, find all number-like sequences in the CLEANED string.
+            const scores = cleanedText.match(/\d+[.,]?\d*/g);
+
+            // Check if we found at least 3 numbers (Expert1, Expert2, Average).
+            if (scores && scores.length >= 3) {
+                // The last three numbers in the cleaned list should be the scores we want.
+                const average = scores[scores.length - 1];
+                const expert2 = scores[scores.length - 2];
+                const expert1 = scores[scores.length - 3];
+                
+                // Return the new, detailed HTML format.
+                return `1. ${expert1}<br>--------------------<br>2. ${expert2}<br><br><b>${average}</b>`;
+            }
+            
+            // If we don't have enough numbers after cleaning, return the original text as a fallback.
             return text;
         }
         // **MODIFICATION END**
@@ -446,9 +467,8 @@
                             <tr>
                                 <td>${formatWorkName(item.pib || '')}</td>
                                 ${departmentCellHTML}
-                                <!-- MODIFICATION: Use the new formatter for the term/finance cell -->
                                 <td>${formatTermAndFinance(item.term || '')}</td>
-                                <td>${item.score || ''}</td>
+                                <td>${formatScores(item.score || '')}</td>
                                 <td>${item.commission || ''}</td>
                             </tr>
                         `;
