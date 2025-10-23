@@ -13,14 +13,15 @@
             align-items: center;
             margin: 0;
             padding: 20px;
+            color: black; /* Base text color */
         }
 
         h1 {
-            color: #333;
+            color: #333; /* A softer black for the main title */
         }
 
         .uploader-container {
-            background-color: #fff;
+            background-color: white; /* White background for containers */
             padding: 20px;
             border-radius: 8px;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
@@ -33,17 +34,17 @@
         }
 
         .custom-file-upload {
-            border: 1px solid #ccc;
             display: inline-block;
             padding: 6px 12px;
             cursor: pointer;
-            background-color: #007bff;
-            color: white;
+            background-color: #0b5394; /* Primary Blue */
+            color: white; /* White text */
             border-radius: 4px;
+            border: none;
         }
 
         .custom-file-upload:hover {
-            background-color: #0056b3;
+            background-color: #084175; /* A slightly darker blue for hover */
         }
 
         #fileName {
@@ -55,7 +56,7 @@
         .slide-container {
             width: 1280px;
             height: 720px;
-            background-color: white;
+            background-color: white; /* White slide background */
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
             overflow: hidden;
             position: relative;
@@ -64,7 +65,6 @@
         }
 
         .slide-content {
-            /* Reduced padding to maximize content area */
             padding: 25px;
             box-sizing: border-box;
             width: 100%;
@@ -74,10 +74,9 @@
         .slide-header {
             font-size: 24px;
             font-weight: bold;
-            color: #003366;
-            /* Reduced margins */
+            color: #0b5394; /* Primary Blue for header text */
             margin-bottom: 15px;
-            border-bottom: 2px solid #003366;
+            border-bottom: 2px solid #b00000; /* Accent Red for the border */
             padding-bottom: 10px;
         }
 
@@ -90,7 +89,6 @@
         .slide-table th,
         .slide-table td {
             border: 1px solid #ddd;
-            /* Drastically reduced padding for compression */
             padding: 4px 5px;
             text-align: left;
             word-wrap: break-word;
@@ -105,8 +103,6 @@
 
         .slide-table td {
             font-size: 12px;
-            /* REMOVED white-space: pre-wrap to collapse empty lines as requested */
-            /* Tightly controlled line-height for density */
             line-height: 1.25;
         }
 
@@ -118,8 +114,8 @@
         }
 
         .controls button {
-            background-color: #28a745;
-            color: white;
+            background-color: #0b5394; /* Primary Blue for all buttons */
+            color: white; /* White text */
             border: none;
             padding: 10px 20px;
             border-radius: 5px;
@@ -129,7 +125,7 @@
         }
 
         .controls button:hover {
-            background-color: #218838;
+            background-color: #084175; /* A slightly darker blue for hover */
         }
 
         .controls button:disabled {
