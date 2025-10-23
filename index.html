@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSV to PNG Slide Generator</title>
+    <style>
+        body {
+            font-family: Verdana, sans-serif;
+            background-color: #f0f2f5;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0;
+            padding: 20px;
+        }
+
+        h1 {
+            color: #333;
+        }
+
+        .uploader-container {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        #csvFileInput {
+            display: none;
+        }
+
+        .custom-file-upload {
+            border: 1px solid #ccc;
+            display: inline-block;
+            padding: 6px 12px;
+            cursor: pointer;
+            background-color: #007bff;
+            color: white;
+            border-radius: 4px;
+        }
+
+        .custom-file-upload:hover {
+            background-color: #0056b3;
+        }
+
+        #fileName {
+            margin-left: 10px;
+            font-style: italic;
+            color: #555;
+        }
+
+        .slide-container {
+            width: 1280px;
+            height: 720px;
+            background-color: white;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            position: relative;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+
+        .slide-content {
+            /* Reduced padding to maximize content area */
+            padding: 25px;
+            box-sizing: border-box;
+            width: 100%;
+            height: 100%;
+        }
+
+        .slide-header {
+            font-size: 24px;
+            font-weight: bold;
+            color: #003366;
+            /* Reduced margins */
+            margin-bottom: 15px;
+            border-bottom: 2px solid #003366;
+            padding-bottom: 10px;
+        }
+
+        .slide-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+
+        .slide-table th,
+        .slide-table td {
+            border: 1px solid #ddd;
+            /* Drastically reduced padding for compression */
+            padding: 4px 5px;
+            text-align: left;
+            word-wrap: break-word;
+            vertical-align: top;
+        }
+
+        .slide-table th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .slide-table td {
+            font-size: 12px;
+            /* REMOVED white-space: pre-wrap to collapse empty lines as requested */
+            /* Tightly controlled line-height for density */
+            line-height: 1.25;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .controls button {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 0 10px;
+        }
+
+        .controls button:hover {
+            background-color: #218838;
+        }
+
+        .controls button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        #slide-indicator {
+            font-size: 18px;
+            font-weight: bold;
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+</head>
+
+<body>
+
+    <h1>CSV to 16:9 PNG Slide Generator</h1>
+
+    <div class="uploader-container">
+        <label for="csvFileInput" class="custom-file-upload">
+            Choose CSV File
+        </label>
+        <input type="file" id="csvFileInput" accept=".csv">
+        <span id="fileName">No file chosen</span>
+    </div>
+
+    <div id="slide-container" class="slide-container" style="display:none;">
+        <!-- Slides will be generated here -->
+    </div>
+
+    <div id="controls" class="controls" style="display:none;">
+        <button id="prev-slide">Previous</button>
+        <span id="slide-indicator"></span>
+        <button id="next-slide">Next</button>
+        <button id="download-png">Download as PNG</button>
+    </div>
+    
+    <!-- Hidden container for measuring content height without affecting the display -->
+    <div id="measuring-container" class="slide-container" style="position: absolute; left: -9999px; top: -9999px; z-index: -1;"></div>
+
+
+    <script>
+        document.getElementById('csvFileInput').addEventListener('change', handleFileSelect);
+
+        let slidesData = [];
+        let currentSlideIndex = 0;
+
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (file) {
+                document.getElementById('fileName').textContent = file.name;
+                Papa.parse(file, {
+                    header: true,
+                    skipEmptyLines: true,
+                    complete: function(results) {
+                        const processedData = processData(results.data);
+                        slidesData = generateSlides(processedData);
+                        if (slidesData.length > 0) {
+                            currentSlideIndex = 0;
+                            renderSlide(currentSlideIndex);
+                            document.getElementById('slide-container').style.display = 'block';
+                            document.getElementById('controls').style.display = 'flex';
+                        }
+                    }
+                });
+            }
+        }
+
+        function processData(data) {
+            const groupedData = [];
+            let currentThematicDirection = "";
+            let currentGroup = null;
+
+            data.forEach(row => {
+                const thematicDirection = row['Назва тематичного напряму відповідно наказу МОН України'] || "";
+
+                if (thematicDirection.trim() !== "" && thematicDirection.trim() !== currentThematicDirection) {
+                    currentThematicDirection = thematicDirection.trim();
+                    if (currentGroup) {
+                        groupedData.push(currentGroup);
+                    }
+                    currentGroup = {
+                        thematicDirection: currentThematicDirection,
+                        items: []
+                    };
+                }
+
+                if (currentGroup) {
+                    currentGroup.items.push({
+                        pib: row['ПІБ наукового керівника, науковий ступінь, вчене звання, назва роботи, категорія та тип роботи'],
+                        department: row['Структурний підрозділ'],
+                        term: row['Термін виконання та орієнтований обсяг фінансування'],
+                        score: row['Бали експертів, середній бал'],
+                        commission: row['Дата та № витягу засідання експертної комісії (голова комісії), щодо проходження І етапу Конкурсу']
+                    });
+                }
+            });
+
+            if (currentGroup) {
+                groupedData.push(currentGroup);
+            }
+
+            return groupedData;
+        }
+
+        function generateSlides(data) {
+            const slides = [];
+            const measuringContainer = document.getElementById('measuring-container');
+            const availableHeight = 720; // Total height of the slide container
+
+            data.forEach(group => {
+                let partCounter = 0;
+                let itemsForCurrentSlide = [];
+                const totalItems = group.items.length;
+
+                const createSlideHTML = (items, thematicDirection, numParts, currentPart) => {
+                    let slideHeaderText = thematicDirection;
+                     if (numParts > 1) {
+                        slideHeaderText += ` (Частина ${currentPart + 1}/${numParts})`;
+                    }
+
+                    let bodyRowsHTML = items.map(item => `
+                        <tr>
+                            <td>${item.pib || ''}</td>
+                            <td>${item.department || ''}</td>
+                            <td>${item.term || ''}</td>
+                            <td>${item.score || ''}</td>
+                            <td>${item.commission || ''}</td>
+                        </tr>
+                    `).join('');
+
+                    return `
+                        <div class="slide-content">
+                            <div class="slide-header">${slideHeaderText}</div>
+                            <table class="slide-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 30%;">Науковий керівник, робота</th>
+                                        <th style="width: 15%;">Підрозділ</th>
+                                        <th style="width: 20%;">Термін та фінансування</th>
+                                        <th style="width: 15%;">Бали</th>
+                                        <th style="width: 20%;">Витяг з комісії</th>
+                                    </tr>
+                                </thead>
+                                <tbody>${bodyRowsHTML}</tbody>
+                            </table>
+                        </div>
+                    `;
+                };
+                
+                let tempItems = [];
+                let estimatedParts = 1;
+                for (const item of group.items) {
+                    tempItems.push(item);
+                    measuringContainer.innerHTML = createSlideHTML(tempItems, group.thematicDirection, 1, 0);
+                    if (measuringContainer.scrollHeight > availableHeight) {
+                        estimatedParts++;
+                        tempItems = [item];
+                    }
+                }
+
+                for (let i = 0; i < totalItems; i++) {
+                    const item = group.items[i];
+                    itemsForCurrentSlide.push(item);
+                    
+                    measuringContainer.innerHTML = createSlideHTML(itemsForCurrentSlide, group.thematicDirection, estimatedParts, partCounter);
+                    
+                    if (measuringContainer.scrollHeight > availableHeight && itemsForCurrentSlide.length > 1) {
+                        const slideItems = itemsForCurrentSlide.slice(0, -1);
+                        slides.push(createSlideHTML(slideItems, group.thematicDirection, estimatedParts, partCounter));
+                        
+                        itemsForCurrentSlide = [item];
+                        partCounter++;
+                    }
+                }
+
+                if (itemsForCurrentSlide.length > 0) {
+                    slides.push(createSlideHTML(itemsForCurrentSlide, group.thematicDirection, estimatedParts, partCounter));
+                }
+            });
+
+            measuringContainer.innerHTML = '';
+            return slides;
+        }
+
+
+        function renderSlide(index) {
+            const container = document.getElementById('slide-container');
+            container.innerHTML = slidesData[index];
+            currentSlideIndex = index;
+            updateControls();
+        }
+
+        function updateControls() {
+            document.getElementById('slide-indicator').textContent = `Slide ${currentSlideIndex + 1} of ${slidesData.length}`;
+            document.getElementById('prev-slide').disabled = currentSlideIndex === 0;
+            document.getElementById('next-slide').disabled = currentSlideIndex === slidesData.length - 1;
+        }
+
+        document.getElementById('prev-slide').addEventListener('click', () => {
+            if (currentSlideIndex > 0) {
+                renderSlide(currentSlideIndex - 1);
+            }
+        });
+
+        document.getElementById('next-slide').addEventListener('click', () => {
+            if (currentSlideIndex < slidesData.length - 1) {
+                renderSlide(currentSlideIndex + 1);
+            }
+        });
+
+        document.getElementById('download-png').addEventListener('click', () => {
+            const slideContainer = document.getElementById('slide-container');
+            html2canvas(slideContainer, {
+                scale: 2
+            }).then(canvas => {
+                const link = document.createElement('a');
+                link.download = `slide_${currentSlideIndex + 1}.png`;
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+            });
+        });
+    </script>
+
+</body>
+</html>
