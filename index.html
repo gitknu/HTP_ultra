@@ -317,32 +317,38 @@
             const lowerText = processedText.toLowerCase(); 
             const startIndexRaw = lowerText.indexOf(startMarker);
 
-            if (startIndexRaw === -1) {
-                return processedText;
-            }
+            if (startIndexRaw !== -1) {
+                const workNameStartIndex = startIndexRaw + startMarker.length;
+                
+                let workNameEndIndex = processedText.length;
+                for (const marker of endMarkers) {
+                    const potentialEndIndex = lowerText.indexOf(marker, workNameStartIndex);
+                    if (potentialEndIndex !== -1 && potentialEndIndex < workNameEndIndex) {
+                        workNameEndIndex = potentialEndIndex;
+                    }
+                }
+                
+                const beforePart = processedText.substring(0, workNameStartIndex);
+                const workNamePart = processedText.substring(workNameStartIndex, workNameEndIndex);
+                const afterPart = processedText.substring(workNameEndIndex);
+                
+                const trimmedWorkName = workNamePart.trim();
+                
+                const leadingSpace = workNamePart.match(/^\s*/)[0] || '';
+                const trailingSpace = workNamePart.match(/\s*$/)[0] || '';
 
-            const workNameStartIndex = startIndexRaw + startMarker.length;
-            
-            let workNameEndIndex = processedText.length;
-            for (const marker of endMarkers) {
-                const potentialEndIndex = lowerText.indexOf(marker, workNameStartIndex);
-                if (potentialEndIndex !== -1 && potentialEndIndex < workNameEndIndex) {
-                    workNameEndIndex = potentialEndIndex;
+                if (trimmedWorkName) {
+                    processedText = `${beforePart}${leadingSpace}<b>${trimmedWorkName}</b>${trailingSpace}${afterPart}`;
                 }
             }
-            
-            const beforePart = processedText.substring(0, workNameStartIndex);
-            const workNamePart = processedText.substring(workNameStartIndex, workNameEndIndex);
-            const afterPart = processedText.substring(workNameEndIndex);
-            
-            const trimmedWorkName = workNamePart.trim();
-            
-            const leadingSpace = workNamePart.match(/^\s*/)[0] || '';
-            const trailingSpace = workNamePart.match(/\s*$/)[0] || '';
 
-            if (trimmedWorkName) {
-                return `${beforePart}${leadingSpace}<b>${trimmedWorkName}</b>${trailingSpace}${afterPart}`;
-            }
+            const categoryRegex = /(Категорія роботи –\s*)(\S+)/;
+            processedText = processedText.replace(categoryRegex, '$1<u>$2</u>');
+            
+            // **MODIFICATION START: Underline type**
+            const typeRegex = /(Тип роботи –\s*)(\S+)/;
+            processedText = processedText.replace(typeRegex, '$1<u>$2</u>');
+            // **MODIFICATION END**
 
             return processedText;
         }
