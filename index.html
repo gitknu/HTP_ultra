@@ -86,9 +86,9 @@
         .slide-header {
             font-size: 24px;
             font-weight: bold;
-            color: #0b5394; /* Primary Blue for header text */
+            color: #b80000; /* MODIFICATION: Primary Red for header text */
             margin-bottom: 15px;
-            border-bottom: 2px solid #b00000; /* Accent Red for the border */
+            border-bottom: 2px solid #0b5394; /* MODIFICATION: Accent Blue for the border */
             padding-bottom: 10px;
         }
 
@@ -266,7 +266,6 @@
                         return;
                     }
 
-                    // **MODIFICATION START**
                     let lastDepartment = "";
                     let lastCommission = "";
                     const filledData = results.data.map(row => {
@@ -285,7 +284,6 @@
                         }
                         return row;
                     });
-                    // **MODIFICATION END**
 
                     const processedData = processData(filledData);
                     slidesData = generateSlides(processedData);
