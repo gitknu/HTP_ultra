@@ -247,13 +247,14 @@
                 header: true,
                 skipEmptyLines: true,
                 complete: function(results) {
+                    const commissionColumnName = 'Дата та № витягу засідання експертної комісії (голова комісії), щодо проходження І етапу Конкурсу';
                     const requiredColumns = [
                         'Назва тематичного напряму відповідно наказу МОН України',
                         'ПІБ наукового керівника, науковий ступінь, вчене звання, назва роботи, категорія та тип роботи',
                         'Структурний підрозділ',
                         'Термін виконання та орієнтований обсяг фінансування',
                         'Бали експертів, середній бал',
-                        'Дата та № витягу засідання експертної комісії (голова комісії), щодо проходження І етапу Конкурсу'
+                        commissionColumnName
                     ];
                     const actualColumns = results.meta.fields;
                     
@@ -265,7 +266,9 @@
                         return;
                     }
 
+                    // **MODIFICATION START**
                     let lastDepartment = "";
+                    let lastCommission = "";
                     const filledData = results.data.map(row => {
                         const department = row['Структурний підрозділ'];
                         if (department && department.trim() !== '') {
@@ -273,8 +276,16 @@
                         } else {
                             row['Структурний підрозділ'] = lastDepartment;
                         }
+
+                        const commission = row[commissionColumnName];
+                        if (commission && commission.trim() !== '') {
+                            lastCommission = commission.trim();
+                        } else {
+                            row[commissionColumnName] = lastCommission;
+                        }
                         return row;
                     });
+                    // **MODIFICATION END**
 
                     const processedData = processData(filledData);
                     slidesData = generateSlides(processedData);
@@ -345,10 +356,8 @@
             const categoryRegex = /(Категорія роботи –\s*)(\S+)/;
             processedText = processedText.replace(categoryRegex, '$1<u>$2</u>');
             
-            // **MODIFICATION START: Underline type**
             const typeRegex = /(Тип роботи –\s*)(\S+)/;
             processedText = processedText.replace(typeRegex, '$1<u>$2</u>');
-            // **MODIFICATION END**
 
             return processedText;
         }
